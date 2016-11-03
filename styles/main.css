@@ -1,0 +1,1 @@
+body{margin:0;background-color:#fff;height:2000px}.hero{background:#000;height:calc(100vh - 36px)}.navbar{height:36px;background-color:#ff9600}.navbar.sticky{position:fixed;top:0;left:0;width:100%}.spacer{height:36px}.letters{max-width:320px}
