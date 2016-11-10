@@ -34,7 +34,7 @@ var life = require('./life');
 var orange = 0xff9600;
 var white = 0xffffff;
 
-var initialCameraDistance = 20;
+var initialCameraDistance = 23;
 var cameraZoom = 2; // per generation
 
 var Conway = function () {
@@ -60,7 +60,7 @@ var Conway = function () {
     this.scene = new Three.Scene();
 
     var aspect = container.clientWidth / container.clientHeight;
-    this.camera = new Three.PerspectiveCamera(20, aspect, 1, 1000);
+    this.camera = new Three.PerspectiveCamera(30, aspect, 1, 1000);
     this.camera.position.z = initialCameraDistance;
 
     this.light = new Three.DirectionalLight(white, 1, 0);
@@ -85,8 +85,11 @@ var Conway = function () {
     addThrottledEventListener('resize', onResize);
 
     // const onMouseMove = event => {
-    //   this.mouseX = event.clientX / window.innerWidth
-    //   this.mouseY = event.clientY / window.innerHeight
+    //   this.mouseX = (event.clientX / window.innerWidth) * 2 - 1
+    //   this.mouseY = (event.clientY / window.innerHeight) * 2 - 1
+    //   console.log(this.mouseX, this.mouseY)
+    //   this.game.rotateX(this.mouseY)
+    //   this.game.rotateZ(this.mouseX)
     // }
     // addThrottledEventListener('mousemove', onMouseMove)
 
