@@ -103,6 +103,9 @@ var ConwayTransition = function () {
 
     this.nextElement = container.nextElementSibling;
 
+    this.container.style.height = '100vh';
+    this.container.style.backgroundColor = this.backgroundColor;
+
     var canvas = document.createElement('canvas');
     canvas.style.position = 'fixed';
     canvas.style.zIndex = '1';
@@ -110,8 +113,14 @@ var ConwayTransition = function () {
     this.c = canvas.getContext('2d');
     container.appendChild(canvas);
 
+    var getScrollAmount = function getScrollAmount() {
+      var scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      var scrollAmount = (scrollTop - _this.offsetTop) / window.innerHeight;
+      return scrollAmount;
+    };
+
     this.scale = window.devicePixelRatio || 1;
-    var setSize = function setSize() {
+    var onResize = function onResize() {
       var width = window.innerWidth;
       var height = window.innerHeight;
       _this.width = width * _this.scale;
@@ -134,17 +143,17 @@ var ConwayTransition = function () {
       _this.nextElementHeight = _this.nextElement.clientHeight;
 
       _this.makeGames();
+
+      _this.scrollAmount = getScrollAmount();
       window.requestAnimationFrame(function () {
         _this.draw();
       });
     };
-    setSize();
-    window.addEventListener('resize', setSize);
+    onResize();
+    window.addEventListener('resize', onResize);
 
     var onScroll = function onScroll(event) {
-      var scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      var scrollAmount = (scrollTop - _this.offsetTop) / window.innerHeight;
-      _this.scrollAmount = scrollAmount;
+      _this.scrollAmount = getScrollAmount();
       window.requestAnimationFrame(function () {
         _this.draw();
       });
@@ -199,16 +208,7 @@ var ConwayTransition = function () {
     value: function draw() {
       var _this3 = this;
 
-      this.nextElement.style = {};
-
       this.c.clearRect(0, 0, this.width * this.scale, this.height * this.scale);
-
-      var centerOffsetLeft = -(this.width % this.cellSize) / 2;
-      var centerOffsetTop = -(this.height % this.cellSize) / 2;
-      var drawCell = function drawCell(x, y, color) {
-        _this3.c.fillStyle = color;
-        _this3.c.fillRect(centerOffsetLeft + x * _this3.cellSize, centerOffsetTop + y * _this3.cellSize, _this3.cellSize, _this3.cellSize);
-      };
 
       var fixNextElement = function fixNextElement() {
         _this3.nextElement.style.position = 'fixed';
@@ -218,15 +218,15 @@ var ConwayTransition = function () {
         _this3.container.style.height = 'calc(100vh + ' + _this3.nextElementHeight + 'px)';
       };
 
-      var resetFexNixtElement = function resetFexNixtElement() {
-        _this3.nextElement.style = {};
+      var resetFixNextElement = function resetFixNextElement() {
+        _this3.nextElement.style.cssText = '';
         _this3.container.style.height = '100vh';
         _this3.container.style.backgroundColor = _this3.backgroundColor;
       };
 
       var offScreen = this.scrollAmount < -1 || this.scrollAmount >= 1;
       if (offScreen) {
-        resetFexNixtElement();
+        resetFixNextElement();
         this.c.globalAlpha = 0;
         return;
       }
@@ -234,7 +234,7 @@ var ConwayTransition = function () {
       var generation = 0,
           alpha = 0;
       if (this.scrollAmount >= -1 && this.scrollAmount < 0) {
-        resetFexNixtElement();
+        resetFixNextElement();
 
         alpha = Math.pow(this.scrollAmount + 1, 4);
         generation = 0;
@@ -250,6 +250,7 @@ var ConwayTransition = function () {
         alpha = 1 - Math.pow(this.scrollAmount, 4);
         generation = Math.floor(this.scrollAmount * this.generations);
       }
+
       this.c.globalAlpha = alpha;
 
       var hGame = this.hGames[generation];
@@ -259,21 +260,29 @@ var ConwayTransition = function () {
         for (var x = 0; x < this.gameWidth; x++) {
           var c = cGame.get(x, y);
           if (c) {
-            drawCell(x, y, this.cColor);
+            this.drawCell(x, y, this.cColor);
             continue;
           }
           var h = hGame.get(x, y);
           if (h) {
-            drawCell(x, y, this.hColor);
+            this.drawCell(x, y, this.hColor);
             continue;
           }
           var alreadyAlive = trail.get(x, y);
           if (!alreadyAlive) {
-            drawCell(x, y, this.backgroundColor);
+            this.drawCell(x, y, this.backgroundColor);
             continue;
           }
         }
       }
+    }
+  }, {
+    key: 'drawCell',
+    value: function drawCell(x, y, color) {
+      var centerOffsetLeft = -(this.width % this.cellSize) / 2;
+      var centerOffsetTop = -(this.height % this.cellSize) / 2;
+      this.c.fillStyle = color;
+      this.c.fillRect(centerOffsetLeft + x * this.cellSize, centerOffsetTop + y * this.cellSize, this.cellSize, this.cellSize);
     }
   }]);
 
@@ -302,122 +311,178 @@ module.exports = function step(grid) {
 };
 
 },{}],4:[function(require,module,exports){
-"use strict";
-
-module.exports = function addThrottledEventListener(eventName, listener) {
-  var target = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : window;
-
-  var inProgress = false;
-  target.addEventListener(eventName, function (event) {
-    if (inProgress) return;
-    inProgress = true;
-    window.requestAnimationFrame(function () {
-      listener(event);
-      inProgress = false;
-    });
-  });
-};
-
-},{}],5:[function(require,module,exports){
-'use strict';
-
-var addThrottledEventListener = require('./addThrottledEventListener');
-var ConwayTransition = require('./ConwayTransition');
-var Letters = require('./letters');
-
-function $(selector) {
-  return [].slice.call(document.querySelectorAll(selector));
-}
-
-function main() {
-  var transitions = $('.transition');
-  transitions.map(function (transition) {
-    var _transition$dataset = transition.dataset,
-        hColor = _transition$dataset.hColor,
-        cColor = _transition$dataset.cColor,
-        backgroundColor = _transition$dataset.backgroundColor;
-
-    return new ConwayTransition(transition, hColor, cColor, backgroundColor);
-  });
-}
-document.addEventListener('DOMContentLoaded', main);
-
-},{"./ConwayTransition":2,"./addThrottledEventListener":4,"./letters":6}],6:[function(require,module,exports){
 'use strict';
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var pixels = require('./pixels');
+var addThrottledEventListener = require('../addThrottledEventListener');
+var letterPixels = require('./pixels');
 
 function randomItem(array) {
   return array[Math.round(Math.random() * (array.length - 1))];
 }
 
-var Letters = function () {
-  function Letters(container) {
-    var _this = this;
+function getScrollTop() {
+  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+}
 
-    var text = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 'HACKCAMPUS';
-    var fps = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 10;
+function closestIndex(haystack, needle) {
+  var closest = 0;
+  for (var i = 0; i < haystack.length; i++) {
+    if (needle >= haystack[i]) closest = i;
+  }
+  return closest;
+}
+
+function max(xs) {
+  var max = -Infinity;
+  for (var i = 0; i < xs.length; i++) {
+    if (max < xs[i]) max = xs[i];
+  }
+  return max;
+}
+
+function unlerp(min, max, value) {
+  return (value - min) / (max - min);
+}
+
+var Letters = function () {
+  function Letters(container, titles) {
+    var _this = this;
 
     _classCallCheck(this, Letters);
 
-    this.text = text;
-    this.fps = fps;
+    this.titles = titles;
 
-    this.state = this.getState();
+    this.maxLength = max(this.titles.map(function (title) {
+      return title.text.length;
+    }));
+
+    this.offsets = this.getSectionOffsets();
 
     var canvas = document.createElement('canvas');
     this.c = canvas.getContext('2d');
     container.appendChild(canvas);
 
+    var onScroll = function onScroll() {
+      _this.updateState(getScrollTop());
+      _this.draw();
+    };
+    onScroll();
+    addThrottledEventListener('scroll', onScroll);
+
     this.scale = window.devicePixelRatio || 1;
-    var setSize = function setSize() {
-      var width = container.clientWidth;
-      var height = width / _this.text.length; // square letters
+    var onResize = function onResize() {
+      var height = container.clientHeight;
+      var width = height * _this.maxLength;
       _this.width = width;
       _this.height = height;
+      container.width = width;
       canvas.width = width * _this.scale;
       canvas.height = height * _this.scale;
       canvas.style.width = width + 'px';
       canvas.style.height = height + 'px';
+      _this.offsets = _this.getSectionOffsets();
       window.requestAnimationFrame(function () {
         _this.draw();
       });
     };
-    setSize();
-    window.addEventListener('resize', setSize);
+    onResize();
+    addThrottledEventListener('resize', onResize);
   }
 
   _createClass(Letters, [{
-    key: 'start',
-    value: function start() {
+    key: 'updateState',
+    value: function updateState(scrollTop) {
       var _this2 = this;
 
-      this.started = true;
-      var render = function render() {
-        if (!_this2.started) return;
-        _this2.state = _this2.getState();
-        _this2.draw();
-        window.setTimeout(function () {
-          // this.fps /= 1.1
-          window.requestAnimationFrame(render);
-        }, 1000 / _this2.fps);
+      var i = closestIndex(this.offsets, scrollTop);
+      var isLastTitle = i >= this.titles.length - 1;
+      var currentTitle = this.titles[i];
+      var nextTitle = isLastTitle ? null : this.titles[i + 1];
+      var ratio = isLastTitle ? 0 : unlerp(this.offsets[i], this.offsets[i + 1], scrollTop);
+
+      var getTitleState = function getTitleState(title) {
+        if (title == null) return;
+        var text = title.text,
+            color = title.color;
+
+        var pixels = [];
+        for (var _i = 0; _i < _this2.maxLength; _i++) {
+          var letter = text[_i] || ' ';
+          var pixelChoices = letterPixels[letter] || letterPixels[' '];
+          var choice = randomItem(pixelChoices);
+          pixels.push(choice);
+        }
+        return {
+          pixels: pixels,
+          color: color
+        };
       };
-      window.requestAnimationFrame(render);
+
+      var newState = function newState() {
+        return {
+          i: i,
+          ratio: ratio,
+          current: getTitleState(currentTitle),
+          next: getTitleState(nextTitle)
+        };
+      };
+
+      if (!this.state) {
+        this.state = newState();
+        return;
+      }
+
+      var old = this.state;
+
+      var same = old.i === i;
+      if (same) {
+        this.state.ratio = ratio;
+        return;
+      }
+
+      var oneDown = old.i === i - 1;
+      if (oneDown) {
+        this.state = {
+          i: i,
+          ratio: ratio,
+          current: old.next,
+          next: getTitleState(nextTitle)
+        };
+        return;
+      }
+
+      var severalDown = old.i < i;
+      if (severalDown) {
+        this.state = newState();
+        return;
+      }
+
+      var oneUp = old.i === i + 1;
+      if (oneUp) {
+        this.state = {
+          i: i,
+          ratio: ratio,
+          current: getTitleState(currentTitle),
+          next: old.current
+        };
+        return;
+      }
+
+      var severalUp = old.i > i;
+      if (severalUp) {
+        this.state = newState();
+        return;
+      }
     }
   }, {
-    key: 'stop',
-    value: function stop() {
-      this.started = false;
-    }
-  }, {
-    key: 'getState',
-    value: function getState() {
-      return [].map.call(this.text, function (letter) {
-        return randomItem(pixels[letter]);
+    key: 'getSectionOffsets',
+    value: function getSectionOffsets() {
+      return this.titles.map(function (x) {
+        return x.element.offsetTop;
       });
     }
   }, {
@@ -430,64 +495,98 @@ var Letters = function () {
 
       this.c.clearRect(0, 0, this.width * this.scale, this.height * this.scale);
 
-      this.c.fillStyle = 'white';
-      var drawPixel = function drawPixel(x, y) {
+      var drawPixel = function drawPixel(x, y, color) {
+        _this3.c.fillStyle = color;
         _this3.c.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
       };
 
-      var offset = 0;
-      var _iteratorNormalCompletion = true;
-      var _didIteratorError = false;
-      var _iteratorError = undefined;
+      var _state = this.state,
+          i = _state.i,
+          ratio = _state.ratio,
+          current = _state.current,
+          next = _state.next;
+      var currentColor = current.color,
+          currentPixels = current.pixels;
 
-      try {
-        for (var _iterator = this.state[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-          var letter = _step.value;
 
-          var i = 0;
-          var _iteratorNormalCompletion2 = true;
-          var _didIteratorError2 = false;
-          var _iteratorError2 = undefined;
+      var nextProbability = Math.pow(ratio, 6);
 
-          try {
-            for (var _iterator2 = letter[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-              var pixel = _step2.value;
+      if (ratio === 0) {
+        var color = currentColor;
+        var pixels = currentPixels;
+        var offset = 0;
+        var _iteratorNormalCompletion = true;
+        var _didIteratorError = false;
+        var _iteratorError = undefined;
 
-              if (pixel === '1') {
-                var x = i % letterSize;
-                var y = Math.floor(i / letterSize);
-                drawPixel(offset + x, y);
-              }
-              i++;
-            }
-          } catch (err) {
-            _didIteratorError2 = true;
-            _iteratorError2 = err;
-          } finally {
-            try {
-              if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                _iterator2.return();
-              }
-            } finally {
-              if (_didIteratorError2) {
-                throw _iteratorError2;
-              }
-            }
-          }
-
-          offset += letterSize;
-        }
-      } catch (err) {
-        _didIteratorError = true;
-        _iteratorError = err;
-      } finally {
         try {
-          if (!_iteratorNormalCompletion && _iterator.return) {
-            _iterator.return();
+          for (var _iterator = pixels[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+            var letter = _step.value;
+
+            var p = 0;
+            var _iteratorNormalCompletion2 = true;
+            var _didIteratorError2 = false;
+            var _iteratorError2 = undefined;
+
+            try {
+              for (var _iterator2 = letter[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+                var pixel = _step2.value;
+
+                if (pixel === '1') {
+                  var x = p % letterSize;
+                  var y = ~~(p / letterSize);
+                  drawPixel(offset + x, y, color);
+                }
+                p++;
+              }
+            } catch (err) {
+              _didIteratorError2 = true;
+              _iteratorError2 = err;
+            } finally {
+              try {
+                if (!_iteratorNormalCompletion2 && _iterator2.return) {
+                  _iterator2.return();
+                }
+              } finally {
+                if (_didIteratorError2) {
+                  throw _iteratorError2;
+                }
+              }
+            }
+
+            offset += letterSize;
           }
+        } catch (err) {
+          _didIteratorError = true;
+          _iteratorError = err;
         } finally {
-          if (_didIteratorError) {
-            throw _iteratorError;
+          try {
+            if (!_iteratorNormalCompletion && _iterator.return) {
+              _iterator.return();
+            }
+          } finally {
+            if (_didIteratorError) {
+              throw _iteratorError;
+            }
+          }
+        }
+      } else {
+        var nextColor = next.color,
+            nextPixels = next.pixels;
+
+        for (var _i2 = 0; _i2 < this.maxLength; _i2++) {
+          var currentLetter = currentPixels[_i2];
+          var nextLetter = nextPixels[_i2];
+          for (var _p = 0; _p < currentLetter.length; _p++) {
+            var displayNext = Math.random() < nextProbability;
+            var _color = displayNext ? nextColor : currentColor;
+            var _pixel = displayNext ? nextLetter[_p] : currentLetter[_p];
+            if (_pixel === '1') {
+              var _x = _p % letterSize;
+              var _y = ~~(_p / letterSize);
+              var _offset = _i2 * letterSize;
+              drawPixel(_offset + _x, _y, _color);
+            }
           }
         }
       }
@@ -499,7 +598,7 @@ var Letters = function () {
 
 module.exports = Letters;
 
-},{"./pixels":7}],7:[function(require,module,exports){
+},{"../addThrottledEventListener":6,"./pixels":5}],5:[function(require,module,exports){
 'use strict';
 
 module.exports = { A: ['0000000001111111011111110111111101111111010000010111111101000001', '0000000001111111011100010111000101110001011111110111000101110001', '0000000001111100010000100100000101000001011111110100000101000001', '0000000001111111010000010101110101000001010111010101010101110111', '0000000001111111010000010100000101111111010000010100000101000001', '0000000001111111010000010100000101000001010000010111111101000001', '0000000001111111000000010000000101111111010000010100000101111111', '0000000000001111000100010010000101000001010000010111111101000001', '0000000000011100001000100100000101000001011111110100000101000001'],
@@ -531,5 +630,115 @@ module.exports = { A: ['00000000011111110111111101111111011111110100000101111111
    ' ': ['0000000000000000000000000000000000000000000000000000000000000000']
 };
 
-},{}]},{},[5])
+},{}],6:[function(require,module,exports){
+"use strict";
+
+module.exports = function addThrottledEventListener(eventName, listener) {
+  var target = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : window;
+
+  var inProgress = false;
+  target.addEventListener(eventName, function (event) {
+    if (inProgress) return;
+    inProgress = true;
+    window.requestAnimationFrame(function () {
+      listener(event);
+      inProgress = false;
+    });
+  });
+};
+
+},{}],7:[function(require,module,exports){
+'use strict';
+
+module.exports = {
+  black: '#000000',
+  white: '#ffffff',
+  orange: '#ff9600'
+};
+
+},{}],8:[function(require,module,exports){
+'use strict';
+
+var addThrottledEventListener = require('./addThrottledEventListener');
+var constants = require('./constants');
+var ConwayTransition = require('./ConwayTransition');
+var Letters = require('./Letters');
+
+function $(selector) {
+  return [].slice.call(document.querySelectorAll(selector));
+}
+
+function transitions(panels) {
+  for (var i = 0; i < panels.length - 1; i++) {
+    var current = panels[i];
+    var next = panels[i + 1];
+    var backgroundColor = getColor(current);
+    var hColor = getColor(next);
+    var cColor = getComplement(backgroundColor, hColor);
+    var transition = document.createElement('div');
+    next.parentElement.insertBefore(transition, next);
+    new ConwayTransition(transition, hColor, cColor, backgroundColor);
+  }
+
+  function getColor(element) {
+    if (element.classList.contains('black')) return constants.black;
+    if (element.classList.contains('white')) return constants.white;
+    if (element.classList.contains('orange')) return constants.orange;
+  }
+
+  function getComplement(colorOne, colorTwo) {
+    var colors = [constants.black, constants.white, constants.orange];
+    var _iteratorNormalCompletion = true;
+    var _didIteratorError = false;
+    var _iteratorError = undefined;
+
+    try {
+      for (var _iterator = colors[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        var color = _step.value;
+
+        if (color !== colorOne && color !== colorTwo) return color;
+      }
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (!_iteratorNormalCompletion && _iterator.return) {
+          _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+  }
+}
+
+function titles(panels) {
+  var container = document.querySelector('.titles');
+  var titles = panels.map(function (panel) {
+    return {
+      element: panel,
+      text: panel.dataset.title,
+      color: getTitleColor(panel)
+    };
+  });
+  var letters = new Letters(container, titles);
+
+  function getTitleColor(element) {
+    if (element.classList.contains('black')) return constants.white;
+    if (element.classList.contains('white')) return constants.orange;
+    if (element.classList.contains('orange')) return constants.black;
+  }
+}
+
+function main() {
+  var panels = $('.panel');
+  transitions(panels);
+  titles(panels);
+}
+document.addEventListener('DOMContentLoaded', main);
+
+},{"./ConwayTransition":2,"./Letters":4,"./addThrottledEventListener":6,"./constants":7}]},{},[8])
 //# sourceMappingURL=hc.js.map
