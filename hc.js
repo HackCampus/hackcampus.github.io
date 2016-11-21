@@ -99,6 +99,9 @@ var ConwayTransition = function () {
     this.backgroundColor = backgroundColor;
     this.generations = generations;
     this.cellSize = 120;
+
+    this.scale = window.devicePixelRatio || 1;
+    this.offsetTop = 0;
     this.scrollAmount = 0;
 
     this.nextElement = container.nextElementSibling;
@@ -119,7 +122,6 @@ var ConwayTransition = function () {
       return scrollAmount;
     };
 
-    this.scale = window.devicePixelRatio || 1;
     var onResize = function onResize() {
       var width = window.innerWidth;
       var height = window.innerHeight;
@@ -134,11 +136,7 @@ var ConwayTransition = function () {
       canvas.style.height = height + 'px';
 
       container.style.height = height + 'px';
-
-      var _container$getBoundin = container.getBoundingClientRect(),
-          top = _container$getBoundin.top;
-
-      _this.offsetTop = top;
+      _this.offsetTop = container.offsetTop;
 
       _this.nextElementHeight = _this.nextElement.clientHeight;
 
