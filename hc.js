@@ -316,14 +316,12 @@ var _createClass = function () { function defineProperties(target, props) { for 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var addThrottledEventListener = require('../addThrottledEventListener');
+var getScrollTop = require('../getScrollTop');
+
 var letterPixels = require('./pixels');
 
 function randomItem(array) {
   return array[Math.round(Math.random() * (array.length - 1))];
-}
-
-function getScrollTop() {
-  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
 }
 
 function closestIndex(haystack, needle) {
@@ -596,7 +594,7 @@ var Letters = function () {
 
 module.exports = Letters;
 
-},{"../addThrottledEventListener":6,"./pixels":5}],5:[function(require,module,exports){
+},{"../addThrottledEventListener":6,"../getScrollTop":8,"./pixels":5}],5:[function(require,module,exports){
 'use strict';
 
 module.exports = { A: ['0000000001111111011111110111111101111111010000010111111101000001', '0000000001111111011100010111000101110001011111110111000101110001', '0000000001111100010000100100000101000001011111110100000101000001', '0000000001111111010000010101110101000001010111010101010101110111', '0000000001111111010000010100000101111111010000010100000101000001', '0000000001111111010000010100000101000001010000010111111101000001', '0000000001111111000000010000000101111111010000010100000101111111', '0000000000001111000100010010000101000001010000010111111101000001', '0000000000011100001000100100000101000001011111110100000101000001'],
@@ -655,18 +653,161 @@ module.exports = {
 };
 
 },{}],8:[function(require,module,exports){
+"use strict";
+
+module.exports = function getScrollTop() {
+  return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+};
+
+},{}],9:[function(require,module,exports){
 'use strict';
 
 var addThrottledEventListener = require('./addThrottledEventListener');
-var constants = require('./constants');
-var ConwayTransition = require('./ConwayTransition');
-var Letters = require('./Letters');
+var getScrollTop = require('./getScrollTop');
+var titles = require('./titles');
+var transitions = require('./transitions');
 
 function $(selector) {
   return [].slice.call(document.querySelectorAll(selector));
 }
 
-function transitions(panels) {
+function heroVideo() {
+  var container = document.querySelector('.videoContainer');
+  var videoId = container.dataset.videoId;
+  var video = document.createElement('div');
+  video.id = 'heroVideo';
+  container.appendChild(video);
+
+  var youtubeScript = document.createElement('script');
+  youtubeScript.src = 'https://www.youtube.com/iframe_api';
+  var firstScript = document.getElementsByTagName('script')[0];
+  firstScript.parentNode.insertBefore(youtubeScript, firstScript);
+
+  var fullVolume = 100;
+
+  var preloaded = false;
+  window.onYouTubeIframeAPIReady = function () {
+    new YT.Player('heroVideo', {
+      videoId: videoId,
+      width: '100%',
+      height: '100%',
+      playerVars: {
+        controls: 0,
+        modestbranding: 1,
+        showinfo: 0
+      },
+      events: {
+        onReady: function onReady(event) {
+          var player = event.target;
+          player.setVolume(0);
+          player.playVideo(); // preload
+          playWhenVisible(player);
+        },
+        onStateChange: function onStateChange(event) {
+          var player = event.target;
+          if (!preloaded && event.data === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
+            player.setVolume(fullVolume);
+            preloaded = true;
+          }
+        }
+      }
+    });
+  };
+
+  function playWhenVisible(player) {
+    var video = player.getIframe();
+    var topMargin = 70; // FIXME
+    addThrottledEventListener('scroll', function (e) {
+      var _video$getBoundingCli = video.getBoundingClientRect(),
+          top = _video$getBoundingCli.top,
+          bottom = _video$getBoundingCli.bottom;
+
+      var visible = top <= topMargin && bottom > 0;
+      if (visible) {
+        player.playVideo();
+      } else {
+        player.pauseVideo();
+      }
+    });
+  }
+}
+
+function videos() {
+  var elements = $('a.video');
+  var player = document.createElement('div');
+  player.className = 'videoPlayer';
+  player.onclick = function (event) {
+    hide(player);
+  };
+  hide(player);
+  document.body.appendChild(player);
+
+  elements.forEach(function (element) {
+    element.onclick = function (event) {
+      event.preventDefault();
+      show(player);
+      var videoUrl = event.target.attributes.href.value;
+      var videoId = videoUrl.match(/watch\?v=(.+)/)[1];
+      var width = window.innerWidth < 720 ? window.innerWidth : 720;
+      var height = width * 0.5625;
+      player.innerHTML = '<iframe width="' + width + '" height="' + height + '" src="https://www.youtube-nocookie.com/embed/' + videoId + '?controls=0&amp;showinfo=0;autoplay=1" frameborder="0" style="margin:auto" allowfullscreen></iframe>';
+    };
+  });
+
+  function show(player) {
+    player.style.visibility = 'visible';
+    player.style.opacity = 1;
+  }
+
+  function hide(player) {
+    player.style.visibility = 'hidden';
+    player.style.opacity = 0;
+    player.innerHTML = '';
+  }
+}
+
+function main() {
+  var panels = $('.panel');
+  transitions(panels);
+  titles(panels);
+  heroVideo();
+  videos();
+  console.log('%cHackCampus is open source! :) Check it out here: https://github.com/hackcampus/website', 'color:#ff9600;');
+}
+document.addEventListener('DOMContentLoaded', main);
+
+},{"./addThrottledEventListener":6,"./getScrollTop":8,"./titles":10,"./transitions":11}],10:[function(require,module,exports){
+'use strict';
+
+var constants = require('./constants');
+var Letters = require('./Letters');
+
+module.exports = function (panels) {
+  var container = document.querySelector('.titles');
+  var titles = panels.map(function (panel) {
+    return {
+      element: panel,
+      text: panel.dataset.title,
+      color: getTitleColor(panel)
+    };
+  });
+  var letters = new Letters(container, titles);
+
+  function getTitleColor(element) {
+    if (element.classList.contains('black')) return constants.white;
+    if (element.classList.contains('white')) return constants.orange;
+    if (element.classList.contains('orange')) return constants.black;
+  }
+};
+
+},{"./Letters":4,"./constants":7}],11:[function(require,module,exports){
+'use strict';
+
+var constants = require('./constants');
+var ConwayTransition = require('./ConwayTransition');
+
+module.exports = function (panels) {
   for (var i = 0; i < panels.length - 1; i++) {
     var current = panels[i];
     var next = panels[i + 1];
@@ -711,32 +852,6 @@ function transitions(panels) {
       }
     }
   }
-}
+};
 
-function titles(panels) {
-  var container = document.querySelector('.titles');
-  var titles = panels.map(function (panel) {
-    return {
-      element: panel,
-      text: panel.dataset.title,
-      color: getTitleColor(panel)
-    };
-  });
-  var letters = new Letters(container, titles);
-
-  function getTitleColor(element) {
-    if (element.classList.contains('black')) return constants.white;
-    if (element.classList.contains('white')) return constants.orange;
-    if (element.classList.contains('orange')) return constants.black;
-  }
-}
-
-function main() {
-  var panels = $('.panel');
-  transitions(panels);
-  titles(panels);
-}
-document.addEventListener('DOMContentLoaded', main);
-
-},{"./ConwayTransition":2,"./Letters":4,"./addThrottledEventListener":6,"./constants":7}]},{},[8])
-//# sourceMappingURL=hc.js.map
+},{"./ConwayTransition":2,"./constants":7}]},{},[9]);
