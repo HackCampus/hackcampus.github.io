@@ -401,7 +401,12 @@ var Letters = function () {
       var ratio = isLastTitle ? 0 : unlerp(this.offsets[i], this.offsets[i + 1], scrollTop);
 
       var getTitleState = function getTitleState(title) {
-        if (title == null) return;
+        if (title == null) {
+          return {
+            pixels: letterPixels[' '],
+            color: 'none'
+          };
+        }
         var text = title.text,
             color = title.color;
 
@@ -503,86 +508,24 @@ var Letters = function () {
           next = _state.next;
       var currentColor = current.color,
           currentPixels = current.pixels;
+      var nextColor = next.color,
+          nextPixels = next.pixels;
 
 
       var nextProbability = Math.pow(ratio, 6);
 
-      if (ratio === 0) {
-        var color = currentColor;
-        var pixels = currentPixels;
-        var offset = 0;
-        var _iteratorNormalCompletion = true;
-        var _didIteratorError = false;
-        var _iteratorError = undefined;
-
-        try {
-          for (var _iterator = pixels[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-            var letter = _step.value;
-
-            var p = 0;
-            var _iteratorNormalCompletion2 = true;
-            var _didIteratorError2 = false;
-            var _iteratorError2 = undefined;
-
-            try {
-              for (var _iterator2 = letter[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
-                var pixel = _step2.value;
-
-                if (pixel === '1') {
-                  var x = p % letterSize;
-                  var y = ~~(p / letterSize);
-                  drawPixel(offset + x, y, color);
-                }
-                p++;
-              }
-            } catch (err) {
-              _didIteratorError2 = true;
-              _iteratorError2 = err;
-            } finally {
-              try {
-                if (!_iteratorNormalCompletion2 && _iterator2.return) {
-                  _iterator2.return();
-                }
-              } finally {
-                if (_didIteratorError2) {
-                  throw _iteratorError2;
-                }
-              }
-            }
-
-            offset += letterSize;
-          }
-        } catch (err) {
-          _didIteratorError = true;
-          _iteratorError = err;
-        } finally {
-          try {
-            if (!_iteratorNormalCompletion && _iterator.return) {
-              _iterator.return();
-            }
-          } finally {
-            if (_didIteratorError) {
-              throw _iteratorError;
-            }
-          }
-        }
-      } else {
-        var nextColor = next.color,
-            nextPixels = next.pixels;
-
-        for (var _i2 = 0; _i2 < this.maxLength; _i2++) {
-          var currentLetter = currentPixels[_i2];
-          var nextLetter = nextPixels[_i2];
-          for (var _p = 0; _p < currentLetter.length; _p++) {
-            var displayNext = Math.random() < nextProbability;
-            var _color = displayNext ? nextColor : currentColor;
-            var _pixel = displayNext ? nextLetter[_p] : currentLetter[_p];
-            if (_pixel === '1') {
-              var _x = _p % letterSize;
-              var _y = ~~(_p / letterSize);
-              var _offset = _i2 * letterSize;
-              drawPixel(_offset + _x, _y, _color);
-            }
+      for (var _i2 = 0; _i2 < this.maxLength; _i2++) {
+        var currentLetter = currentPixels[_i2];
+        var nextLetter = nextPixels[_i2];
+        for (var p = 0; p < currentLetter.length; p++) {
+          var displayNext = ratio !== 0 && Math.random() < nextProbability;
+          var color = displayNext ? nextColor : currentColor;
+          var pixel = displayNext ? nextLetter[p] : currentLetter[p];
+          if (pixel === '1') {
+            var x = p % letterSize;
+            var y = ~~(p / letterSize);
+            var offset = _i2 * letterSize;
+            drawPixel(offset + x, y, color);
           }
         }
       }
