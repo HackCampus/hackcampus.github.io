@@ -616,6 +616,7 @@ function $(selector) {
 
 function heroVideo() {
   var container = document.querySelector('.videoContainer');
+  if (!container) return;
   var videoId = container.dataset.videoId;
   var video = document.createElement('div');
   video.id = 'heroVideo';
